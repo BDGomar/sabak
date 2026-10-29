@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom'
-import { getMe, clearSession } from './lib/api'
+import { getMe, logout as logoutRequest } from './lib/api'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Clients from './pages/Clients'
@@ -168,11 +168,22 @@ function Layout({ me, children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [drawer, setDrawer] = useState(false)
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
   const items = NAV.filter(i => i.roles.includes(me?.role))
 
+  useEffect(() => {
+    const up = () => setOnline(true)
+    const down = () => setOnline(false)
+    window.addEventListener('online', up)
+    window.addEventListener('offline', down)
+    return () => {
+      window.removeEventListener('online', up)
+      window.removeEventListener('offline', down)
+    }
+  }, [])
+
   const logout = async () => {
-    try { await fetch('/api/auth/logout', { method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('sabak_token')}` } }) } catch {}
-    clearSession()
+    await logoutRequest()
     navigate('/login')
   }
 
@@ -210,6 +221,11 @@ function Layout({ me, children }) {
         </header>
         <main key={location.pathname} className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 animate-page-in max-w-[1600px] mx-auto w-full">{children}</main>
       </div>
+      {!online && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] rounded-full bg-red-600 text-white text-xs font-medium px-4 py-2 shadow-lg">
+          Hors ligne — les données affichées peuvent être incomplètes.
+        </div>
+      )}
     </div>
   )
 }

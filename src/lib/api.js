@@ -1,6 +1,13 @@
 const TOKEN_KEY = 'sabak_token'
 const USER_KEY = 'sabak_user'
 
+/**
+ * Base de l'API.
+ * - En dev / déploiement same-origin : "/api" (proxy Vite ou Nginx)
+ * - Sur Vercel : VITE_API_URL=https://sabak.digitgroup.tech/api
+ */
+export const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
+
 export function getToken() { return localStorage.getItem(TOKEN_KEY) }
 export function getMe() {
   try { return JSON.parse(localStorage.getItem(USER_KEY)) } catch { return null }
@@ -24,7 +31,7 @@ export async function api(path, { method = 'GET', body, form } = {}) {
   if (token) headers.Authorization = `Bearer ${token}`
   if (body) headers['Content-Type'] = 'application/json'
 
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers,
     body: form ?? (body ? JSON.stringify(body) : undefined),
@@ -46,10 +53,21 @@ export async function api(path, { method = 'GET', body, form } = {}) {
   return data
 }
 
+/** Déconnexion serveur (supprime le token Sanctum courant). */
+export async function logout() {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', Authorization: `Bearer ${getToken()}` },
+    })
+  } catch { /* hors-ligne : on nettoie quand même la session locale */ }
+  clearSession()
+}
+
 /** Télécharge un export CSV authentifié. */
 export async function download(path, filename) {
   const token = getToken()
-  const res = await fetch(`/api${path}`, { headers: { Authorization: `Bearer ${token}` } })
+  const res = await fetch(`${API_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } })
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -62,7 +80,7 @@ export async function download(path, filename) {
 /** Reçu HTML imprimable dans un nouvel onglet. */
 export async function openReceipt(paymentId) {
   const token = getToken()
-  const res = await fetch(`/api/payments/${paymentId}/receipt/html`, {
+  const res = await fetch(`${API_BASE}/payments/${paymentId}/receipt/html`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   const html = await res.text()
