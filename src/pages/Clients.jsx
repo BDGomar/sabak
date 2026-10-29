@@ -74,7 +74,10 @@ export default function Clients({ me }) {
             {(rows?.data || []).map(c => {
               const s = c.active_subscription_data
               return (
-                <tr key={c.id}>
+                <tr key={c.id}
+                  onClick={() => navigate(`/clients/${c.id}`)}
+                  className="cursor-pointer"
+                  title="Voir la fiche du client">
                   <td data-label="Code">
                     <Link to={`/clients/${c.id}`} className="font-semibold text-yellow-700 hover:text-yellow-800 hover:underline">{c.code}</Link>
                   </td>
